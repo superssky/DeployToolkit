@@ -13,42 +13,76 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.tools.ant.BuildException;
+import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.ExecTask;
 import org.apache.tools.ant.types.Commandline;
 
 import com.wyb.tool.util.DateUtil;
 
 public class GitUpdateFile extends UpdateFile {
+	private final Logger logger = LogManager.getLogger(GitUpdateFile.class);
+
+	private ExecTask exec = new ExecTask();
+	private String cmd = "";
+	private boolean isLog = false;
 	
 	public GitUpdateFile(Map<String, Object> attrs) throws URISyntaxException {
 		initArr(attrs);
 	}
 	
-	public void initTask(ExecTask exec) throws IOException {
+	public File genUpdateFile() throws IOException {
+		exec.setProject(new Project());
 		exec.setExecutable("cmd.exe");
 		
 		if(!getWorkDir().exists()) {
 			throw new BuildException("工作目录不能为空！");
 		}
 		exec.setDir(getWorkDir());
+		if(StringUtils.isBlank(getGitCmd())) {
+			cmd = "status -s";
+		} else if(getGitCmd().matches("git\\s+status.*")){
+			cmd = "status -s";
+		} else if(getGitCmd().matches("git\\s+log\\s+-\\d+.*")) {
+			String[] matches = getGitCmd().split("\\s+");
+			for(String m : matches) {
+				if(m.equals("log")) {
+					cmd += m;
+				}
+				if(m.matches("-\\d+")) {
+					int num = Integer.parseInt(m.substring(1));
+					cmd += " -1 --skip="+(num-1);
+					
+					break;
+				}
+			}
+			cmd += " --name-status --pretty=format:\"\" --date-order";
+			isLog = true;
+		} else {
+			cmd = "status -s";
+		}
 		Commandline.Argument arg = exec.createArg();
 		if(getControlPath().exists() && getControlPath().isDirectory()) {
-			arg.setLine("/c "+getControlPath().getCanonicalPath()+"\\git.exe status -s");
+			arg.setLine("/c "+getControlPath().getCanonicalPath()+"\\git.exe "+cmd);
 		} else {
-			arg.setLine("/c git status -s");
+			arg.setLine("/c git "+cmd);
 		}
-//		if(exec.getResolveExecutable()) {
-//			throw new BuildException("git.exe 未指定安装目录，或未添加至环境变量中！");
-//		}
 		exec.setFailonerror(true);
 		exec.setAppend(true);
+
+		File outFile = File.createTempFile("outFile", ".tmp");
+		setOutFile(outFile);
+		exec.setOutput(outFile);
+		
+		exec.execute();
+		dealUpdateFile(outFile);
+		return getOutFile();
 	}
 
-	public File dealUpdateFile(File outFile) throws IOException {
-		BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(outFile)));
-		String line = reader.readLine();
-		
+	public void dealUpdateFile(File outFile) throws IOException {
 		boolean needRule = false;
 		Map<String, String> rules = getRuleMap();
 		StringBuilder regex = new StringBuilder("(");
@@ -67,74 +101,104 @@ public class GitUpdateFile extends UpdateFile {
 		String updateFileName = "updatefile-"+DateUtil.convertDateTime(new Date(), DateUtil.timeFormatStr)+".txt";
 		File updateFile = null;
 		FileOutputStream out = null;
-		while((line = reader.readLine()) != null) {
-			if(out == null) {
-				updateFile = new File(getToDir(), updateFileName);
-				updateFile.createNewFile();
-				out = new FileOutputStream(updateFile);
-			}
-			line = line.substring(3);
-			if(needRule) {
-				Matcher matcher = pattern.matcher(line);
-				if(matcher.matches()) {
-					String key = matcher.group(1);
-					line = line.replaceFirst(key, rules.get(key));
+		BufferedReader reader = null;
+		FileOutputStream deleteOut = null;
+		boolean isDelete = false;
+		try {
+			reader = new BufferedReader(new InputStreamReader(new FileInputStream(outFile)));
+			String line = "";
+			while((line = reader.readLine()) != null) {
+				if(StringUtils.isBlank(line)) {
+					continue;
 				}
-			}
-			
-			if(line.startsWith("//")) {
-				line = line.substring(2);
-			} else if(line.startsWith("/")) {
-				line = line.substring(1);
-			}
-			if(line.lastIndexOf(".java") > 0) {
-				String classStr = line.replace(".java", "");
-				String pDirStr = classStr.substring(0,classStr.lastIndexOf("/"));
-				String className =  classStr.substring(classStr.lastIndexOf("/")+1);
-				File pDir = new File(getFromDir(), pDirStr);
-				String[] names = pDir.list(new FilenameFilter() {
-					public boolean accept(File dir, String name) {
-						if(name.equals(className+".class") ||
-								name.startsWith(className+"$")) {
-							return true;
+				logger.trace(line);
+				if(out == null) {
+					updateFile = new File(getToDir(), updateFileName);
+					updateFile.createNewFile();
+					out = new FileOutputStream(updateFile);
+					deleteOut = new FileOutputStream(getDeleteFile(), true);
+				}
+				if(isLog) {
+					if(line.charAt(0) == 'D') {
+						isDelete = true;
+					} else {
+						isDelete = false;
+					}
+					line = line.substring(1).trim();
+				} else {
+					if(line.charAt(1) == 'D') {
+						isDelete = true;
+					} else {
+						isDelete = false;
+					}
+					line = line.substring(3);
+				}
+				if(needRule) {
+					Matcher matcher = pattern.matcher(line);
+					if(matcher.matches()) {
+						String key = matcher.group(1);
+						line = line.replaceFirst(key, rules.get(key));
+					}
+				}
+				
+				if(line.startsWith("//")) {
+					line = line.substring(2);
+				} else if(line.startsWith("/")) {
+					line = line.substring(1);
+				}
+				if(line.lastIndexOf(".java") > 0) {
+					String classStr = line.replace(".java", "");
+					if(!isDelete) {
+						String pDirStr = classStr.substring(0,classStr.lastIndexOf("/"));
+						final String className =  classStr.substring(classStr.lastIndexOf("/")+1);
+						File pDir = new File(getFromDir(), pDirStr);
+						String[] names = pDir.list(new FilenameFilter() {
+							public boolean accept(File dir, String name) {
+								if(name.equals(className+".class") ||
+										name.startsWith(className+"$")) {
+									return true;
+								}
+								return false;
+							}
+						});
+						if(names != null) {
+							for(String name : names) {
+								out.write((pDirStr+"/"+name+"\n").getBytes());
+							}
 						}
-						return false;
+					} else {
+						deleteOut.write((classStr+".class\n").getBytes());
+						deleteOut.write((classStr+"$.*.class\n").getBytes());
 					}
-				});
-				if(names != null) {
-					for(String name : names) {
-						out.write((pDirStr+"/"+name+"\n").getBytes());
+					continue;
+				} else if(line.endsWith("/") || (new File(getFromDir(), line)).isDirectory()) {
+					if(isDelete) {
+						if(line.endsWith("/")) {
+							deleteOut.write((line+".*").getBytes());
+						} else {
+							deleteOut.write((line+"/.*").getBytes());
+						}
+					} else {
+						writeFile(out, getFromDir(), line);
 					}
+					continue;
 				}
-				continue;
-			} else if(line.endsWith("/")) {
-				writeFile(out, getFromDir(), line);
-				continue;
-			}
-			line += "\n";
-			out.write(line.getBytes());
-		}
-		if(out != null) {
-			out.close();
-		}
-		
-		reader.close();
-		return updateFile;
-	}
-	
-	private void writeFile(FileOutputStream out, File parent, String filePath) throws IOException {
-		File file = new File(parent, filePath);
-		if(file.exists()) {
-			File [] files = file.listFiles();
-			for(File f : files) {
-				String fileStr = filePath+f.getName();
-				if(f.isFile()) {
-					out.write((fileStr+"\n").getBytes());
-				}
-				if(f.isDirectory()) {
-					writeFile(out, parent, fileStr+"/");
+				line += "\n";
+				if(isDelete) {
+					deleteOut.write(line.getBytes());
+				} else {
+					out.write(line.getBytes());
 				}
 			}
+		} finally {
+			if(out != null) {
+				out.close();
+			}
+			if(reader != null) {
+				reader.close();
+			}
 		}
+		outFile.delete();
+		setOutFile(updateFile);
 	}
 }

@@ -1,6 +1,7 @@
 package com.wyb.tool.component;
 
 import java.awt.GridBagLayout;
+import java.awt.Insets;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
@@ -18,12 +19,15 @@ import org.dom4j.Document;
 import com.wyb.tool.layout.GBC;
 import com.wyb.tool.listener.FileChooserListener;
 import com.wyb.tool.util.Config;
+import java.awt.Dimension;
 
+/**
+ * 部署面板
+ * @author wyb
+ *
+ */
 public class DeployJPanel extends JPanel {
 
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -5608457364242620633L;
 	private JTextField toField;
 	private JTextField fromField;
@@ -45,70 +49,97 @@ public class DeployJPanel extends JPanel {
 		initConfig();
 		
 		fc = new JFileChooser();
-		JLabel toLabel = new JLabel("更新包存放目录：");
-		add(toLabel, new GBC(0,0,1,1).setAnchor(GBC.EAST));
 		
-		toField = new JTextField();
+		GBC gbc = new GBC(0,0,3,1);
+		
+		JPanel optionPanel = new DeployOptionPanel(this);
+		add(optionPanel, gbc.setFill(GBC.BOTH).setWeightX(0.05).setWeightY(0.05));
+		
+		JLabel toLabel = new JLabel("更新包存放目录：");
+		toLabel.setHorizontalAlignment(JTextField.RIGHT);
+		add(toLabel, gbc.setGridY(1).setGridWidth(1).setWeightX(0)
+				.setWeightY(0).setAnchor(GBC.EAST).setInsets(new Insets(0, 0, 5, 0)));
+		
+		JLabel fromLabel = new JLabel("更新文件目录：");
+		fromLabel.setHorizontalAlignment(JTextField.RIGHT);
+		add(fromLabel, gbc.setGridY(2));
+		
+		JLabel workLabel = new JLabel("系统工作目录：");
+		workLabel.setHorizontalAlignment(JTextField.RIGHT);
+		add(workLabel, gbc.setGridY(3));
+		
+		JLabel remoteLabel = new JLabel("远程更新目录：");
+		remoteLabel.setHorizontalAlignment(JTextField.RIGHT);
+		add(remoteLabel, gbc.setGridY(4));
+		
+		toField = new JTextField("");
+		toField.setSize(200, 100);
+//		toField.setColumns(50);
 		toField.setEditable(false);
-		add(toField, new GBC(1,0,1, 1).setFill(GBC.HORIZONTAL).setWeightX(0.1));
+		toField.setToolTipText("更新包及更新文件的路径！");
+		add(toField, gbc.setGridX(1).setGridY(1).setAnchor(GBC.WEST).setWeightX(0.01));
+		
+		fromField = new JTextField();
+//		fromField.setColumns(50);
+		fromField.setEditable(false);
+		fromField.setToolTipText("获取更新文件的路径！");
+		add(fromField, gbc.setGridY(2));
+		
+		workField = new JTextField();
+//		workField.setColumns(50);
+		workField.setEditable(false);
+		workField.setToolTipText("工作目录 ，即代码编辑目录！");
+		add(workField, gbc.setGridY(3));
+		
+		remoteField = new JTextField();
+//		remoteField.setColumns(50);
+		remoteField.setToolTipText("远程更新地址，即需要部署的远程主机目录，可以是IP+目录，也可以是本地映射远程目录！");
+		add(remoteField, gbc.setGridY(4));
 		
 		JButton toButton = new JButton(createImageIcon("images/Open16.gif"));
-		add(toButton, new GBC(3,0,1,1));
+		toButton.setSize(new Dimension(70,20));
+		add(toButton, gbc.setGridX(2).setGridY(1).setFill(GBC.NONE)
+				.setWeightX(0).setInsets(new Insets(0, 3, 5, 0)));
 		toButton.addActionListener(new FileChooserListener(toField, fc, this));
 		toButton.setName("toDir");
 		
-		JLabel fromLabel = new JLabel("更新文件目录：");
-		add(fromLabel, new GBC(0,2,1,1).setAnchor(GBC.EAST));
-		
-		fromField = new JTextField();
-		fromField.setEditable(false);
-		add(fromField, new GBC(1,2,1,1).setFill(GBC.HORIZONTAL).setWeightX(0.1));
-		
 		JButton fromButton = new JButton(createImageIcon("images/Open16.gif"));
-		add(fromButton, new GBC(3,2,1,1));
+		fromButton.setSize(new Dimension(70,20));
 		fromButton.addActionListener(new FileChooserListener(fromField, fc, this));
 		fromButton.setName("fromDir");
-		
-		JLabel workLabel = new JLabel("系统工作目录：");
-		add(workLabel, new GBC(0,4,1,1).setAnchor(GBC.EAST));
-		
-		workField = new JTextField();
-		workField.setEditable(false);
-		add(workField, new GBC(1,4,1,1).setFill(GBC.HORIZONTAL).setWeightX(0.1));
+		add(fromButton, gbc.setGridY(2));
 		
 		JButton workButton = new JButton(createImageIcon("images/Open16.gif"));
-		add(workButton, new GBC(3,4,1,1));
+		workButton.setSize(new Dimension(70,20));
+		add(workButton, gbc.setGridY(3));
 		workButton.addActionListener(new FileChooserListener(workField, fc, this));
 		workButton.setName("workDir");
 		
-		JLabel remoteLabel = new JLabel("远程更新目录：");
-		add(remoteLabel, new GBC(0,6,1,1).setAnchor(GBC.EAST));
-		
-		remoteField = new JTextField();
-		remoteField.setEditable(false);
-		add(remoteField, new GBC(1,6,1,1).setFill(GBC.HORIZONTAL).setWeightX(0.1));
-		
 		JButton remoteButton = new JButton(createImageIcon("images/Open16.gif"));
-		add(remoteButton, new GBC(3,6,1,1));
+		remoteButton.setSize(new Dimension(70,20));
+		add(remoteButton, gbc.setGridY(4));
 		remoteButton.addActionListener(new FileChooserListener(remoteField, fc, this));
 		remoteButton.setName("remoteDir");
 		
-		JPanel optionPanel = new DeployOptionPanel(this);
-		add(optionPanel, new GBC(0,8,8,4).setFill(GBC.BOTH).setWeightX(0.1).setWeightY(0.1));
-		
 		messagePane = new JTextArea();
 		messagePane.setEditable(false);
+		messagePane.setWrapStyleWord(true);
 		JScrollPane paneScrollPane = new JScrollPane(messagePane);
 		paneScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
-		paneScrollPane.setBounds(10, 224, 585, 212);
 		paneScrollPane.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createCompoundBorder(
 						BorderFactory.createTitledBorder("输出信息"),
 						BorderFactory.createEmptyBorder(5,5,5,5)),
 				paneScrollPane.getBorder()));
-		add(paneScrollPane, new GBC(0,13,8,4).setFill(GBC.BOTH).setWeightX(0.1).setWeightY(0.1));
+		add(paneScrollPane, gbc.setGridX(0).setGridY(6).setWeightX(0.1).setAnchor(GBC.CENTER)
+				.setWeightY(0.1).setGridWidth(3).setFill(GBC.BOTH).setInsets(new Insets(5, 0, 0, 0)));
 	}
 	
+	/**
+	 * 解析配置文件
+	 * @author wyb
+	 * @date 2015年9月9日 下午3:52:34
+	 */
 	private void initConfig() {
 		try {
 			config = Config.parse(CONFIG_FILE);

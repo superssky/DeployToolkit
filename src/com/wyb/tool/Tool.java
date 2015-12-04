@@ -96,7 +96,7 @@ public class Tool {
 		propertyItem.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				PropertyDialog lfDialog = new PropertyDialog(frame, "属性设置", true);
+				final PropertyDialog lfDialog = new PropertyDialog(frame, "属性设置", true);
 				
 				addLookAndFeelInfo(UIManager.getInstalledLookAndFeels(),lfDialog);
 				
@@ -110,7 +110,7 @@ public class Tool {
 			}
 		});
 		
-		JTabbedPane tabbedPane = new JTabbedPane();
+		final JTabbedPane tabbedPane = new JTabbedPane();
 		frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
 		tabbedPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
 		
@@ -118,6 +118,7 @@ public class Tool {
 		tabbedPane.addTab("首页", startPanel);
 		startPanel.setLayout(new GridLayout(0,2));
 		
+		//添加部署按钮
 		JButton deployButton = new JButton("部署");
 		startPanel.add(deployButton);
 		deployButton.addActionListener(new ActionListener() {
@@ -134,7 +135,7 @@ public class Tool {
 	}
 
 	public void addLookAndFeelInfo(UIManager.LookAndFeelInfo [] lfInfos, Container container) {
-		DefaultListModel<DefaultListModelObject<String>> listModel = 
+		final DefaultListModel<DefaultListModelObject<String>> listModel = 
 				new DefaultListModel<DefaultListModelObject<String>>();
 		for(UIManager.LookAndFeelInfo lfInfo : lfInfos) {
 			listModel.addElement(
@@ -148,12 +149,17 @@ public class Tool {
 			
 			@Override
 			public void valueChanged(ListSelectionEvent e) {
-				try {
-					UIManager.setLookAndFeel(listModel.getElementAt(e.getFirstIndex()).getValue());
-				} catch (ClassNotFoundException | InstantiationException | IllegalAccessException
-						| UnsupportedLookAndFeelException e1) {
-					e1.printStackTrace();
-				}
+					try {
+						UIManager.setLookAndFeel(listModel.getElementAt(e.getFirstIndex()).getValue());
+					} catch (ClassNotFoundException e1) {
+						e1.printStackTrace();
+					} catch (InstantiationException e1) {
+						e1.printStackTrace();
+					} catch (IllegalAccessException e1) {
+						e1.printStackTrace();
+					} catch (UnsupportedLookAndFeelException e1) {
+						e1.printStackTrace();
+					}
 			}
 		});
 	}

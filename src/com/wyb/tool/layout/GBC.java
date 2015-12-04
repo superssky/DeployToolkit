@@ -80,4 +80,9 @@ public class GBC extends GridBagConstraints {
 		this.anchor = anchor;
 		return this;
 	}
+	
+	public GBC setInsets(Insets insets) {
+		this.insets = insets;
+		return this;
+	}
 }

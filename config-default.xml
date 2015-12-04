@@ -16,7 +16,7 @@
     <!-- #是否更新远程目录 -->
     <isUpdateRemote>false</isUpdateRemote>
     <!-- #是否生成更新文件列表 -->
-    <isGenUpdateFile>true</isGenUpdateFile>
+    <isDeleteFile>true</isDeleteFile>
     <!-- #是否生成更新包 -->
     <isGenUpdate>true</isGenUpdate>
 <!--     #匹配规则 -->
